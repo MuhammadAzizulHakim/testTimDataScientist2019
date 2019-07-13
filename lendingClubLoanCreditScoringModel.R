@@ -16,18 +16,37 @@ unique(loan$loan_status)
 #1 = Good Statuses = "Fully Paid", "Current"
 library(dplyr)
 #Bad statuses:
-bad_indicators <- c("Charged Off ",
+bad_indicators <- c("Charged Off",
                     "In Grace Period",
                     "Late (16-30 days)",
                     "Late (31-120 days)")
-
 #Assign statuses di atas ke dalam kelompok "bad" (0):
 loan$is_bad <- ifelse(loan$loan_status %in% bad_indicators, 0,
-                      ifelse(loan$loan_status=="Fully Paid", 1, "Current")
+                      ifelse(loan$loan_status=="", NA, 1)
                       )
-#Buat barplot:
-barplot(table(loan$is_bad) , col = 'lightblue')
-#Distribusi:
-library(DescTools)
+#Buat barplot (visualisasi 0 vs 1):
+barplot(table(loan$is_bad), col = 'lightblue')
 
-Desc(loan$is_bad, main="Loan Label Distribution", plotit = TRUE)
+#Cek perilaku variabel numerik untuk good vs bad loans:
+numeric_cols <- sapply(loan, is.numeric)
+# turn the data into long format
+library(reshape2)
+#Beri nama kolom id observasi
+#melt(loan, id.vars="")
+loan_long <- melt(loan[,numeric_cols], id="is_bad")
+
+# plot the distribution for 'bad' and 'good' for each numeric variable
+library(ggplot2)
+p <- ggplot(aes(x = value, group = is_bad, colour = factor(is_bad)), 
+            data = loan_long)
+
+# create the plot to check if there are any good variables that can be used in predictive models
+p + geom_density() +
+  facet_wrap(~variable, scales="free")
+
+
+#Show the data setelah disimpulkan bahwa annual_inc dan int_rate sebagai dua predictor paling berpengaruh:
+loan %>% 
+  filter(is_bad == '0') %>% 
+  select(annual_inc, int_rate, loan_status) %>% 
+  datatable(., options = list(pageLength = 10))
