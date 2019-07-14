@@ -1,5 +1,5 @@
 #Load dataset
-loan <- readRDS("lending_club_loan_data.rds")
+loan <- readRDS("loan2.rds")
 
 #Read data as nice table
 library(DT)
@@ -31,13 +31,13 @@ loan2 = loan %>%
 
 #Convert 1 to "Good" and 0 to "Bad"
 loan2$is_bad <- as.factor(ifelse(loan2$is_bad == 1, "Good", "Bad"))
-pct(loan2$is_bad)
 
 #Buat barplot (visualisasi 0 vs 1):
 barplot(table(loan2$is_bad), col = 'lightblue')
 
 #Cek perilaku variabel numerik untuk good vs bad loans:
 numeric_cols <- sapply(loan2, is.numeric)
+
 
 #Mulai dari sini, split data dahulu menjadi jumlah observasi yang lebih sedikit, dikarenakan keterbatasan hardware
 #Teknik splitting data menggunakan stratified random samplin, untuk memaintain rasio jumlah data agar tetap representatif dengan jumlah data yang sebenarnya
@@ -70,13 +70,13 @@ library(reshape2)
 loan_long <- melt(loan3[,numeric_cols], id="is_bad")
 
 #Plot the distribution for 'bad' and 'good' for each numeric variable
-library(ggplot2)
-p <- ggplot(aes(x = value, group = is_bad, colour = factor(is_bad)), 
-            data = loan_long)
+#library(ggplot2)
+#p <- ggplot(aes(x = value, group = is_bad, colour = factor(is_bad)), 
+#            data = loan_long)
 #Create the plot to check if there are any good variables that can be used in predictive models
 #Catatan: metode ini crash ketika menggunakan stratum 20% dari total dataset, apalagi ketika menggunakan keseluruhan dataset
-p + geom_density() +
-  facet_wrap(~variable, scales="free")
+#p + geom_density() +
+#  facet_wrap(~variable, scales="free")
 #Dari metode di atas, diperoleh variabel-variabel yang mempengaruhi status pinjaman, sebagai berikut:
 #all_util
 #annual_inc_joint
@@ -119,10 +119,11 @@ model_RF_perf <- performance(model_RF_pred, "tpr", "fpr")
 #plot variable importance
 varImpPlot(model_RF, main="Random Forest: Variable Importance")
 
+#Try logistic regression
+library(stats)
 
-
-colSums(is.na(train_loan))
-
+model <- glm(is_bad~.,data=train_loan,family=binomial())
+model <- step(model)
 
 #Show the data setelah disimpulkan bahwa annual_inc dan int_rate sebagai dua predictor paling berpengaruh:
 loan %>% 
