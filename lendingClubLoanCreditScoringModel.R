@@ -68,10 +68,10 @@ pct(loan3$is_bad)
 
 #Catatan: data is_bad harus numeric
 # turn the data into long format
-library(reshape2)
+#library(reshape2)
 #Beri nama kolom id observasi
 #melt(loan, id.vars="")
-loan_long <- melt(loan3[,numeric_cols], id="is_bad")
+#loan_long <- melt(loan3[,numeric_cols], id="is_bad")
 
 #Plot the distribution for 'bad' and 'good' for each numeric variable
 #library(ggplot2)
@@ -152,3 +152,6 @@ model_RF_AUROC <- round(performance(model_RF_pred, measure = "auc")@y.values[[1]
 model_RF_KS <- round(max(attr(model_RF_perf,'y.values')[[1]] - attr(model_RF_perf,'x.values')[[1]])*100, 2)
 model_RF_Gini <- (2*model_RF_AUROC - 100)
 cat("AUROC: ",model_RF_AUROC,"\tKS: ", model_RF_KS, "\tGini:", model_RF_Gini, "\n")
+
+#Function untuk test dataset baru: 
+model_RF_pred <- prediction(model_RF_fitForest, test_loan$is_bad)
