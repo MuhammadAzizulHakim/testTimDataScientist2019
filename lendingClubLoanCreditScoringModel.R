@@ -112,7 +112,7 @@ pct(loan3$is_bad)
 pct(train_loan$is_bad)
 pct(test_loan$is_bad)
 
-#Drop semua variabel character, karena menyebabkan error pada Model Random Forest
+#Drop semua variabel character, karena menyebabkan error pada Model Random
 train_loan <- select (train_loan,-c(title,emp_title))
 test_loan <- select (test_loan, -c(title,emp_title))
 
@@ -121,25 +121,34 @@ test_loan2 <- test_loan[, !sapply(test_loan, is.character)]
 
 #Pilih Metode Random Forest, untuk sekalian menguji variabel mana yang paling berpengaruh untuk mempresiksi status peminjam
 library(randomForest)
+library(ROCR)
 
 model_RF <- randomForest(is_bad ~ ., data = train_loan2)
 
 model_RF_fitForest <- predict(model_RF, newdata = test_loan, type="prob")[,2]
-model_RF_pred <- prediction( model_RF_fitForest, test_loan$is_bad)
+model_RF_pred <- prediction(model_RF_fitForest, test_loan$is_bad)
 model_RF_perf <- performance(model_RF_pred, "tpr", "fpr")
 
-#plot variable importance
+#Print important variable
+varImp(model_RF)
+#Plot variable importance
 varImpPlot(model_RF, main="Random Forest: Variable Importance")
 
+#Model Performance plot
+plot(model_RF_perf, colorize=TRUE, lwd=2, main = "ROC: Random Forest", col = "blue")
+lines(x=c(0, 1), y=c(0, 1), col="red", lwd=1, lty=3);
+lines(x=c(1, 0), y=c(0, 1), col="green", lwd=1, lty=4)
 
-#Try logistic regression
-library(stats)
+#Plot precision/recall curve
+model_RF_perf_precision <- performance(model_RF_pred, measure = "prec", x.measure = "rec")
+plot(model_RF_perf_precision, main="Random Forests: Precision/Recall Curve")
 
-model <- glm(is_bad~.,data=train_loan, family=binomial())
-model <- step(model)
+#Plot accuracy as function of threshold
+model_RF_perf_accuracy <- performance(model_RF_pred, measure = "acc")
+plot(model_RF_perf_accuracy, main="Random Forests:Accuracy as function of threshold")
 
-#Show the data setelah disimpulkan bahwa annual_inc dan int_rate sebagai dua predictor paling berpengaruh:
-loan %>% 
-  filter(is_bad == '0') %>% 
-  select(annual_inc, int_rate, loan_status) %>% 
-  datatable(., options = list(pageLength = 10))
+#KS & AUC model Random Forest
+model_RF_AUROC <- round(performance(model_RF_pred, measure = "auc")@y.values[[1]]*100, 2)
+model_RF_KS <- round(max(attr(model_RF_perf,'y.values')[[1]] - attr(model_RF_perf,'x.values')[[1]])*100, 2)
+model_RF_Gini <- (2*model_RF_AUROC - 100)
+cat("AUROC: ",model_RF_AUROC,"\tKS: ", model_RF_KS, "\tGini:", model_RF_Gini, "\n")
