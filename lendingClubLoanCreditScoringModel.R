@@ -32,11 +32,14 @@ loan2 = loan %>%
 #Convert 1 to "Good" and 0 to "Bad"
 loan2$is_bad <- as.factor(ifelse(loan2$is_bad == 1, "Good", "Bad"))
 
+#Hapus observasi dengan NA yang masih tersisa
+loan2_na_omitted <- na.omit(loan2)
+
 #Buat barplot (visualisasi 0 vs 1):
-barplot(table(loan2$is_bad), col = 'lightblue')
+barplot(table(loan2_na_omitted$is_bad), col = 'lightblue')
 
 #Cek perilaku variabel numerik untuk good vs bad loans:
-numeric_cols <- sapply(loan2, is.numeric)
+numeric_cols <- sapply(loan2_na_omitted, is.numeric)
 
 
 #Mulai dari sini, split data dahulu menjadi jumlah observasi yang lebih sedikit, dikarenakan keterbatasan hardware
@@ -53,13 +56,14 @@ pct <- function(x){
 
 #Lakukan stratified random sampling, gunakan 10% data yang ada
 set.seed(42)
-remaining_data <- createDataPartition(y=loan2$is_bad, p = .9, list = FALSE)
+remaining_data <- createDataPartition(y=loan2_na_omitted$is_bad, p = .9, list = FALSE)
 str(remaining_data)
 #Split data menjadi stratum yang akan digunakan untuk analisis vs stratum yang tidak digunakan
-remaining_loan_data <- loan2[remaining_data,]
-loan3 <- loan2[-remaining_data,] #Ke depannya, kita hanya akan menggunakan data loan3
+remaining_loan_data <- loan2_na_omitted[remaining_data,]
+loan3 <- loan2_na_omitted[-remaining_data,] #Ke depannya, kita hanya akan menggunakan data loan3
+
 #Test, apakah stratum loan2 sudah representatif dengan data loan
-pct(loan2$is_bad)
+pct(loan2_na_omitted$is_bad)
 pct(loan3$is_bad)
 
 #Catatan: data is_bad harus numeric
@@ -108,10 +112,18 @@ pct(loan3$is_bad)
 pct(train_loan$is_bad)
 pct(test_loan$is_bad)
 
+#Drop semua variabel character, karena menyebabkan error pada Model Random Forest
+train_loan <- select (train_loan,-c(title,emp_title))
+test_loan <- select (test_loan, -c(title,emp_title))
+
+train_loan2 <- train_loan[, !sapply(train_loan, is.character)]
+test_loan2 <- test_loan[, !sapply(test_loan, is.character)]
+
 #Pilih Metode Random Forest, untuk sekalian menguji variabel mana yang paling berpengaruh untuk mempresiksi status peminjam
 library(randomForest)
 
-model_RF <- randomForest(is_bad ~ ., data = train_loan)
+model_RF <- randomForest(is_bad ~ ., data = train_loan2)
+
 model_RF_fitForest <- predict(model_RF, newdata = test_loan, type="prob")[,2]
 model_RF_pred <- prediction( model_RF_fitForest, test_loan$is_bad)
 model_RF_perf <- performance(model_RF_pred, "tpr", "fpr")
@@ -119,10 +131,11 @@ model_RF_perf <- performance(model_RF_pred, "tpr", "fpr")
 #plot variable importance
 varImpPlot(model_RF, main="Random Forest: Variable Importance")
 
+
 #Try logistic regression
 library(stats)
 
-model <- glm(is_bad~.,data=train_loan,family=binomial())
+model <- glm(is_bad~.,data=train_loan, family=binomial())
 model <- step(model)
 
 #Show the data setelah disimpulkan bahwa annual_inc dan int_rate sebagai dua predictor paling berpengaruh:
